@@ -1,5 +1,5 @@
 [package]
-name = "io"
+name = "hp_io"
 version = "0.1.0"
 authors = ["wtu-sos <595388976@qq.com>"]
 edition = "2018"
