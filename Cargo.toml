@@ -5,3 +5,5 @@ authors = ["wtu-sos <595388976@qq.com>"]
 edition = "2018"
 
 [dependencies]
+libc = "*"
+bitflags = "*"

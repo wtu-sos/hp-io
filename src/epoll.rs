@@ -10,6 +10,7 @@ pub enum ControlOperates {
 }
 
 bitflags! {
+    #[derive(Default)]
     pub struct Events: u32 {
         const EPOLLET = libc::EPOLLET as u32;
         const EPOLLIN = libc::EPOLLIN as u32;
@@ -63,7 +64,7 @@ pub fn epoll_ctl(epfd: RawFd, op: ControlOperates, fd: RawFd, mut event: Event) 
 }
 
 #[allow(unused)]
-pub fn epoll_wait(epfd: RawFd, timeout: i32, buf: &mut [Event]) -> io::Result<usize> {
+pub fn epoll_wait(epfd: RawFd, timeout: i32, buf: &mut Vec<Event>) -> io::Result<usize> {
     let timeout = if timeout < -1 { -1 } else { timeout };
     let events_count = unsafe { 
         cvt(libc::epoll_wait(epfd, buf.as_mut_ptr() as *mut libc::epoll_event,
