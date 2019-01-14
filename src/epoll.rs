@@ -33,7 +33,7 @@ fn cvt(result: libc::c_int) -> io::Result<libc::c_int> {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Event {
     pub events : u32,
     pub data: u64
