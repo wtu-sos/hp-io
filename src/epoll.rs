@@ -11,7 +11,7 @@ pub enum ControlOperates {
 
 bitflags! {
     #[derive(Default)]
-    pub struct Events: u32 {
+    pub struct PollOpt: u32 {
         const EPOLLET = libc::EPOLLET as u32;
         const EPOLLIN = libc::EPOLLIN as u32;
         const EPOLLERR = libc::EPOLLERR as u32;
@@ -33,7 +33,7 @@ fn cvt(result: libc::c_int) -> io::Result<libc::c_int> {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Event {
     pub events : u32,
     pub data: u64
@@ -41,8 +41,8 @@ pub struct Event {
 
 #[allow(unused)]
 impl Event {
-    pub fn new(events: Events, data: u64) -> Self {
-        Event { events: events.bits(), data: data }
+    pub fn new(opt: PollOpt, data: u64) -> Self {
+        Event { events: opt.bits(), data: data }
     }
 }
 

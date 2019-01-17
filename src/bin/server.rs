@@ -2,17 +2,17 @@ use std::collections::HashMap;
 use std::net::{Shutdown ,TcpListener, TcpStream};
 use std::thread;
 use std::io::{Write, Read, Error};
-use std::os::unix::io::{AsRawFd, FromRawFd};
+use std::os::unix::io::{AsRawFd};
 use std::sync::Mutex;
 
 use state::Storage;
-use hp_io::epoll::{self, Event, Events, ControlOperates};
+use hp_io::epoll::{self, Event, PollOpt, ControlOperates};
 
 static GLOBAL_CONN : Storage<Mutex<HashMap<i32, TcpStream>>> = Storage::new();
 
 fn handle_client(stream: TcpStream, epfd: i32) -> Result<(), Error> {
     println!("connect from : {}", stream.peer_addr()?);
-    let conn_ev = Event::new(Events::EPOLLIN | Events::EPOLLET, stream.as_raw_fd() as u64);
+    let conn_ev = Event::new(PollOpt::EPOLLIN | PollOpt::EPOLLET, stream.as_raw_fd() as u64);
     epoll::epoll_ctl(epfd, ControlOperates::EpollCtrAdd, stream.as_raw_fd(), conn_ev)?;
 
     {
@@ -27,14 +27,14 @@ fn handle_client(stream: TcpStream, epfd: i32) -> Result<(), Error> {
 fn main() -> Result<(), Error> {
     GLOBAL_CONN.set(Mutex::new(HashMap::new()));
     let listener = TcpListener::bind("0.0.0.0:23456").expect("could not bind");
-    listener.set_nonblocking(true);
+    listener.set_nonblocking(true)?;
     println!("listenning ..... ");
 
     let epfd = epoll::epoll_create(true)?;
 
     let listenfd_u64 = listener.as_raw_fd() as u64;
 
-    let listen_ev = Event::new(Events::EPOLLIN | Events::EPOLLET, listener.as_raw_fd() as u64);
+    let listen_ev = Event::new(PollOpt::EPOLLIN | PollOpt::EPOLLET, listener.as_raw_fd() as u64);
     epoll::epoll_ctl(epfd, ControlOperates::EpollCtrAdd, listener.as_raw_fd(), listen_ev)?;
 
     loop {
@@ -56,11 +56,11 @@ fn main() -> Result<(), Error> {
                     }
                 }
             } else {
-                let bits = Events::from_bits_truncate(buf[index].events);
+                let bits = PollOpt::from_bits_truncate(buf[index].events);
                 println!("bits {:?}", bits);
-                if bits.contains(Events::EPOLLIN) {
+                if bits.contains(PollOpt::EPOLLIN) {
                     let mut data = [0; 1024];
-                    let mut bytes_read;
+                    let bytes_read;
                     let fd = buf[index].data as i32;
                     {
                         let mut conns = GLOBAL_CONN.get().lock().unwrap();
@@ -75,9 +75,9 @@ fn main() -> Result<(), Error> {
                         println!("close fd");
                         let mut conns = GLOBAL_CONN.get().lock().unwrap();
                         let stream = conns.remove(&fd).unwrap();
-                        stream.shutdown(Shutdown::Both);
+                        stream.shutdown(Shutdown::Both)?;
                     } 
-                } else if bits.contains(Events::EPOLLOUT) {
+                } else if bits.contains(PollOpt::EPOLLOUT) {
                     println!("output event {:?}", bits);
                 }
             }
