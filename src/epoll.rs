@@ -68,7 +68,7 @@ pub fn epoll_wait(epfd: RawFd, timeout: i32, buf: &mut Vec<Event>) -> io::Result
     let timeout = if timeout < -1 { -1 } else { timeout };
     let events_count = unsafe { 
         cvt(libc::epoll_wait(epfd, buf.as_mut_ptr() as *mut libc::epoll_event,
-                                buf.len() as i32,
+                                buf.capacity() as i32,
                                 timeout))?
     };
 

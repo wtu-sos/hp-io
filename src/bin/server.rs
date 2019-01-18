@@ -1,82 +1,61 @@
-use std::collections::HashMap;
-use std::net::{Shutdown ,TcpListener, TcpStream};
-use std::thread;
+use std::net::{TcpListener, TcpStream};
+//use std::thread;
 use std::io::{Write, Read, Error};
-use std::os::unix::io::{AsRawFd};
-use std::sync::Mutex;
+use std::os::unix::io::{AsRawFd, FromRawFd};
+use std::time::Duration;
 
-use state::Storage;
-use hp_io::epoll::{self, Event, PollOpt, ControlOperates};
-
-static GLOBAL_CONN : Storage<Mutex<HashMap<i32, TcpStream>>> = Storage::new();
-
-fn handle_client(stream: TcpStream, epfd: i32) -> Result<(), Error> {
-    println!("connect from : {}", stream.peer_addr()?);
-    let conn_ev = Event::new(PollOpt::EPOLLIN | PollOpt::EPOLLET, stream.as_raw_fd() as u64);
-    epoll::epoll_ctl(epfd, ControlOperates::EpollCtrAdd, stream.as_raw_fd(), conn_ev)?;
-
-    {
-        let mut conns = GLOBAL_CONN.get().lock().unwrap();
-        conns.insert(stream.as_raw_fd() as i32, stream);
-        println!("global connects size : {}", conns.len());
-    }
-    
-    Ok(())
-}
+use hp_io::epoll::PollOpt;
+use hp_io::selector;
 
 fn main() -> Result<(), Error> {
-    GLOBAL_CONN.set(Mutex::new(HashMap::new()));
     let listener = TcpListener::bind("0.0.0.0:23456").expect("could not bind");
     listener.set_nonblocking(true)?;
-    println!("listenning ..... ");
 
-    let epfd = epoll::epoll_create(true)?;
+    let poll = selector::Selector::new()?;
 
     let listenfd_u64 = listener.as_raw_fd() as u64;
 
-    let listen_ev = Event::new(PollOpt::EPOLLIN | PollOpt::EPOLLET, listener.as_raw_fd() as u64);
-    epoll::epoll_ctl(epfd, ControlOperates::EpollCtrAdd, listener.as_raw_fd(), listen_ev)?;
+    println!("listenning fd:{} ..... ", listenfd_u64 as i32);
+    poll.register(listener.as_raw_fd(), PollOpt::EPOLLIN | PollOpt::EPOLLET, listenfd_u64)?;
 
     loop {
-        let mut buf = vec![Event::new(Default::default(), 0u64); 50];
-        let nfds = epoll::epoll_wait(epfd, 500, &mut buf)?;
+        let mut buf = Vec::with_capacity(100);
+        let nfds = poll.select(&mut buf, listener.as_raw_fd(), Some(Duration::from_millis(500)))?;
 
         for index in 0 .. nfds {
-            if buf[index].data == listenfd_u64 {
+            if buf[index].data as i32 == listenfd_u64 as i32 {
                 println!("accepting event data : {:?}", buf[index]);
                 match listener.accept() {
                     Ok((stream, _addr)) => {
-                        let epfd_cp = epfd;
-                        thread::spawn(move || {
-                            handle_client(stream, epfd_cp).unwrap_or_else(|e| println!("{:#?}", e));
-                        });
+                        poll.register(stream.as_raw_fd(), PollOpt::EPOLLIN | PollOpt::EPOLLET, stream.as_raw_fd() as u64)?;
+                        std::mem::forget(stream);
                     },
                     Err(e) => {
                         println!("incomming connect failed: {}", e);
+                        return Ok(());
                     }
                 }
             } else {
                 let bits = PollOpt::from_bits_truncate(buf[index].events);
-                println!("bits {:?}", bits);
+                println!("bits {:?}, index: {}, Event:{:?}", bits, index, buf[index]);
                 if bits.contains(PollOpt::EPOLLIN) {
                     let mut data = [0; 1024];
-                    let bytes_read;
+
                     let fd = buf[index].data as i32;
-                    {
-                        let mut conns = GLOBAL_CONN.get().lock().unwrap();
-                        let stream = conns.get_mut(&fd).unwrap();
-                        bytes_read = stream.read(&mut data)?; 
-                        if bytes_read > 0 {
-                            stream.write(&data[..bytes_read])?;
-                        }
+                    let mut stream = unsafe {TcpStream::from_raw_fd(fd)};
+                    let bytes_read = stream.read(&mut data)?; 
+                    if bytes_read > 0 {
+                        stream.write(&data[..bytes_read])?;
                     }
+
+                    println!("fd {:?}", fd);
 
                     if bytes_read == 0 {
                         println!("close fd");
-                        let mut conns = GLOBAL_CONN.get().lock().unwrap();
-                        let stream = conns.remove(&fd).unwrap();
-                        stream.shutdown(Shutdown::Both)?;
-                    } 
+                        std::mem::drop(stream);
+                    } else {
+                        std::mem::forget(stream);
+                    }
                 } else if bits.contains(PollOpt::EPOLLOUT) {
                     println!("output event {:?}", bits);
                 }
