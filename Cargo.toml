@@ -8,3 +8,4 @@ edition = "2018"
 libc = "*"
 bitflags = "*"
 state = {version = "0.4", features = ["const_fn"]}
+slab = "0.4"
