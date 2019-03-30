@@ -2,3 +2,7 @@ rust/target
 rust/Cargo.lock
 *.swp
 
+cpp/build
+cpp/.lock-waf_linux2_build
+cpp/*.log
+
