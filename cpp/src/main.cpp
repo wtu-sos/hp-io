@@ -1,5 +1,5 @@
 #include<iostream>
-#include "ringbuff.h"
+#include "ringbuffer.h"
 
 using namespace std;
 

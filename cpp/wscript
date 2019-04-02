@@ -10,10 +10,10 @@ top = '.'
 out = 'build'
 
 def options(opt):
-    opt.load('clang++')
+    opt.load('g++')
 
 def configure(conf):
-    conf.load('clang++')
+    conf.load('g++')
     #conf.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=False)
 
 def build(bld):
