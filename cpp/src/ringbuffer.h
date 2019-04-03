@@ -1,4 +1,5 @@
 #include<atomic>
+#include<algorithm>
 #include<type_traits>
 
  #define likely(x) __builtin_expect(!!(x), 1)
@@ -71,6 +72,38 @@ class BufferBase {
 
 		bool empty(std::size_t write_idx, std::size_t read_idx) {
 			return write_idx == read_idx;
+		}
+
+		bool push(T const& t, T * buffer, std::size_t max_size) {
+			const std::size_t write = write_idx.load(std::memory_order_relaxed);
+			const std::size_t next = this->next(write, max_size);
+			if (next == read_idx.load(std::memory_order_acquire)) {
+				return false;
+			}
+
+			new (buffer+write) T(t);
+			write_idx.store(next, std::memory_order_release);
+
+			return true;
+		}
+
+		std::size_t pop(T* output_buffer, std::size_t output_count, T* buffer, std::size_t max_size) {
+			const std::size_t read = read_idx.load(std::memory_order_relaxed);
+			const std::size_t write = write_idx.load(std::memory_order_acquire);
+			std::size_t avail = read_available(write, read, max_size);	
+
+			if (0 == avail) {
+				return 0;
+			}
+
+			output_count = std::min(avail, output_count);
+			std::size_t new_read_index = buffer + read;
+			// todo : copy and delete 
+			if (read + output_count > max_size) {
+			} else {
+			}
+
+			return output_count;
 		}
 
 	public:
