@@ -100,8 +100,21 @@ class BufferBase {
 			std::size_t new_read_index = buffer + read;
 			// todo : copy and delete 
 			if (read + output_count > max_size) {
+				const std::size_t seg1 = max_size - read;
+				std::copy(buffer+read, buffer+max_size, output_buffer);
+
+				const std::size_t seg2 = output_count - seg1;
+				std::copy(buffer, buffer+seg2, output_buffer+seg1);
+
+				new_read_index -= max_size;
 			} else {
+				std::copy(buffer+read, buffer+output_count, output_buffer);
+				if (new_read_index == max_size) {
+					new_read_index = 0;
+				}
 			}
+
+			read_idx.store(new_read_index, std::memory_order_release);
 
 			return output_count;
 		}
