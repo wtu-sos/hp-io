@@ -3,6 +3,18 @@
 
 using namespace std;
 
+class Temp {
+public:
+	Temp(int count) {
+		m_count = count;
+		cout << "call construct" << endl;
+	}
+
+	int m_count;
+};
+
 int main() {
-	cout << "" << endl;
+	Temp* t = new Temp(1);
+	Temp* pt = new(t) Temp(3);
+	cout << " : " << pt->m_count << endl;
 }
