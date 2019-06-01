@@ -9,18 +9,11 @@ SockIo::SockIo() {
 
 SockIo::~SockIo() {}
 
-size_t SockIo::recv(
-    void* buf, 
-    size_t n, 
-    int flags 
-) const {
+size_t SockIo::recv(void* buf, size_t n, int flags) const {
     return ::recv(this->get_fd(), buf, n, flags);
 }
 
-size_t SockIo::recv(
-    void* buf, 
-    size_t n 
-) const {
+size_t SockIo::recv(void* buf, size_t n) const {
     return ::read(this->get_fd(), buf, n);
 }
 

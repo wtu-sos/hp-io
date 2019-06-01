@@ -9,15 +9,28 @@ APPNAME='io'
 top = '.'
 out = 'build'
 
+includes_dir = ['.', 'libs/', 'libs/include']
+cxx_build_flags = ['-std=c++17']
+ld_flags = ['-lpthread']
+link_flags = []
+
+
 def options(opt):
-    opt.load('g++')
+    opt.load('clang++')
 
 def configure(conf):
-    conf.load('g++')
+    conf.load('clang++')
     #conf.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=False)
 
 def build(bld):
-    bld.program(source='src/main.cpp', target='io')
+    bld.program(
+            source='src/main.cpp',
+            includes = includes_dir,
+            cxxflags = cxx_build_flags,
+            linkflags = link_flags,
+            ldflags = ld_flags,
+            target='io'
+            )
 
     if bld.cmd != 'clean':
         from waflib import Logs

@@ -5,4 +5,4 @@ rust/Cargo.lock
 cpp/build
 cpp/.lock-waf_linux2_build
 cpp/*.log
-
+**/.vscode

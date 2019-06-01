@@ -18,7 +18,6 @@ class BufferBase {
 		BufferBase(): read_idx(0), write_idx(0) {}
 
 		/**
-		 *
 		 *  #define likely(x) __builtin_expect(!!(x), 1)
 		 *	#define unlikely(x) __builtin_expect(!!(x), 0)
 		 *  这里的__built_expect()函数是gcc(version >= 2.96)的内建函数,提供给程序员使用的，目的是将"分支转移"的信息提供给编译器，这样编译器对代码进行优化，以减少指令跳转带来的性能下降。
