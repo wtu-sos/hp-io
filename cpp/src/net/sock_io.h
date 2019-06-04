@@ -1,7 +1,7 @@
 #ifndef SOCKET_IO_H
 #define SOCKET_IO_H
 
-#include "sock.hpp"
+#include "sock.h"
 #include "stddef.h"
 
 class SockIo : public Sock {

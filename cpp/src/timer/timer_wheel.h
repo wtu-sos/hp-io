@@ -33,11 +33,11 @@ public:
     TimerCallback callback;
 };
 
-typedef std::vector<std::list<TimerNode>> TimerGroup;
+typedef std::vector<std::list<TimerNode*>> TimerGroup;
 class TimerVec {
 public:
     TimerVec(size_t size): index(0) {
-        group = std::vector(size, std::list<TimerNode>());
+        group = std::vector(size, std::list<TimerNode*>());
     }
 
     int index;
@@ -51,6 +51,7 @@ public:
 
 protected:
     void inner_add_timer(TimerNode* node);
+    void cascade(size_t wheel, size_t index); 
 
 private:
     int size_ = 0;

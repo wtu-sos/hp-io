@@ -2,7 +2,7 @@
 #include "sys/socket.h"
 #include "errno.h"
 #include "sys/types.h"
-#include "sock.hpp"
+#include "sock.h"
 
 Sock::Sock(
     int type, 

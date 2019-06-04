@@ -1,7 +1,7 @@
 #include "sys/socket.h"
 #include "unistd.h"
 
-#include "sock_io.hpp"
+#include "sock_io.h"
 
 SockIo::SockIo() {
 
