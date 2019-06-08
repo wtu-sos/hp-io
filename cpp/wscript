@@ -10,21 +10,22 @@ top = '.'
 out = 'build'
 
 includes_dir = ['.', 'libs/', 'libs/include']
-cxx_build_flags = ['-std=c++17']
+cxx_build_flags = ['-std=c++17', '-g', '-O0']
 ld_flags = ['-lpthread']
 link_flags = []
 
 
 def options(opt):
-    opt.load('clang++')
+    opt.load('g++')
 
 def configure(conf):
-    conf.load('clang++')
+    conf.load('g++')
     #conf.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=False)
 
 def build(bld):
     bld.program(
-            source='src/main.cpp',
+            #source=bld.path.ant_glob(['src/**/*.cpp']), 
+            source=['src/main.cpp', 'src/thread_pool.cpp'], 
             includes = includes_dir,
             cxxflags = cxx_build_flags,
             linkflags = link_flags,

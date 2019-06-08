@@ -100,14 +100,14 @@ class BufferBase {
 			// todo : copy and delete 
 			if (read + output_count > max_size) {
 				const std::size_t seg1 = max_size - read;
-				std::copy(buffer+read, buffer+max_size, output_buffer);
+				copy_and_delete(buffer+read, buffer+max_size, output_buffer);
 
 				const std::size_t seg2 = output_count - seg1;
-				std::copy(buffer, buffer+seg2, output_buffer+seg1);
+				copy_and_delete(buffer, buffer+seg2, output_buffer+seg1);
 
 				new_read_index -= max_size;
 			} else {
-				std::copy(buffer+read, buffer+output_count, output_buffer);
+				copy_and_delete(buffer+read, buffer+output_count, output_buffer);
 				if (new_read_index == max_size) {
 					new_read_index = 0;
 				}
@@ -119,6 +119,19 @@ class BufferBase {
 		}
 
 	public:
+	    template<class OutputIterator>
+		OutputIterator copy_and_delete( T * first, T * last, OutputIterator out )
+		{
+			if (std::is_trivially_destructible<T>::value) {
+				return std::copy(first, last, out); // will use memcpy if possible
+			} else {
+				for (; first != last; ++first, ++out) {
+					*out = *first;
+					first->~T();
+				}
+				return out;
+			}
+		}
 };
 
 template<typename T, std::size_t MaxSize>
