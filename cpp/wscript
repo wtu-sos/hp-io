@@ -16,16 +16,17 @@ link_flags = []
 
 
 def options(opt):
-    opt.load('g++')
+    opt.load('clang++')
 
 def configure(conf):
-    conf.load('g++')
+    conf.load('clang++')
     #conf.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=False)
 
 def build(bld):
     bld.program(
             #source=bld.path.ant_glob(['src/**/*.cpp']), 
-            source=['src/main.cpp', 'src/thread_pool.cpp'], 
+            #source=['src/main.cpp', 'src/thread_pool.cpp'], 
+            source=['src/main.cpp'], 
             includes = includes_dir,
             cxxflags = cxx_build_flags,
             linkflags = link_flags,
