@@ -13,10 +13,23 @@ using namespace std;
 class Temp
 {
 public:
-	Temp(int count)
-	{
+	Temp() {
+		m_count = 0;
+	}
+
+	Temp(int count) {
 		m_count = count;
 		cout << "call construct" << endl;
+	}
+
+	    //拷贝构造函数
+    Temp(const Temp& C) {
+        m_count = C.m_count;
+		cout << "call copy construct" << endl;
+    }
+
+	int output() {
+		return m_count;
 	}
 
 	int m_count;
@@ -64,9 +77,13 @@ public:
 //			<< size << " ints : " << diff.count() << " s\n";
 //}
 
-void writer(spsc_queue<int>::PostType p) {
-	for (int i = 10; i < 100; ++i) 
-		p->post(i);
+void writer(spsc_queue<Temp>::PostType p) {
+	for (int i = 0; i < 10; ++i) 
+	{
+		cout << "post i " << i << endl;
+		p->post(Temp(i));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
 }
 
 int main()
@@ -76,21 +93,21 @@ int main()
 
 	try {
 		shared_ptr<spsc_queue<int>> q (new spsc_queue<int>);
-		q->enqueue(1);
-		q->enqueue(2);
-		int v;
-		bool b = q->dequeue(v);
-		b = q->dequeue(v);
-		q->enqueue(3);
-		q->enqueue(4);
-		b = q->dequeue(v);
+		//q->enqueue(1);
+		//q->enqueue(2);
+		//int v;
+		//bool b = q->dequeue(v);
+		//b = q->dequeue(v);
+		//q->enqueue(3);
+		//q->enqueue(4);
+		//b = q->dequeue(v);
 
-		//auto tmp = spsc_queue<int>::split(q);
-		b = q->dequeue(v);
-		b = q->dequeue(v);
-		auto tmp = spsc_queue<int>::channel();
-		spsc_queue<int>::PostType p = std::move(std::get<0>(tmp));
-		spsc_queue<int>::RecvType r = std::move(std::get<1>(tmp));
+		////auto tmp = spsc_queue<int>::split(q);
+		//b = q->dequeue(v);
+		//b = q->dequeue(v);
+		auto tmp = spsc_queue<Temp>::channel();
+		spsc_queue<Temp>::PostType p = std::move(std::get<0>(tmp));
+		spsc_queue<Temp>::RecvType r = std::move(std::get<1>(tmp));
 
 		p->post(5);
 
@@ -99,13 +116,17 @@ int main()
 		cout << "use count : " << q.use_count() << endl;
 		std::thread write (writer, std::move(p));
 
-		std::thread read ([](spsc_queue<int>::RecvType rt) {
-			int output = 0;
+		std::thread read ([](spsc_queue<Temp>::RecvType rt) {
+			Temp output;
 			while (true) {
 				if (rt->recv(output)) {
-					cout << " recved : " << output << endl;
+					cout << " recved : " << output.output() << endl;
 				}
-				
+				if (output.output() > 4) {
+					break;
+				}
+
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
 		}, std::move(r));
 
@@ -118,4 +139,11 @@ int main()
 	Temp *t = new Temp(1);
 	Temp *pt = new (t) Temp(3);
 	cout << " : " << pt->m_count << endl;
+
+	RingBuffer<Temp, 10> rb;
+	rb.push(Temp(1000));
+
+	Temp ret;
+	rb.pop(&ret);
+	cout << "rb return : " << ret.m_count << endl;
 }

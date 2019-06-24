@@ -1,6 +1,10 @@
+#pragma once
+
 #include <atomic>
 #include <memory>
 #include <iostream>
+
+#include "def.h"
 
 template<typename T> 
 T load_consume(T const* addr) 
@@ -78,7 +82,7 @@ public:
     }
 
     static std::tuple<PostType, RecvType> split(std::shared_ptr<spsc_queue<T>> sp) {
-        std::cout << "split use count: " << sp.use_count() << std::endl;
+        //std::cout << "split use count: " << sp.use_count() << std::endl;
         //auto weak = this->weak_from_this();
         //auto sp = std::shared_ptr<spsc_queue<T>>(weak);
         //std::shared_ptr<spsc_queue<T>> sp = this->std::enable_shared_from_this<spsc_queue<T>>::shared_from_this();

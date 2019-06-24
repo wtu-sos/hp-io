@@ -2,20 +2,25 @@
 #include<algorithm>
 #include<type_traits>
 
+#include "def.h"
+
  #define likely(x) __builtin_expect(!!(x), 1)
  #define unlikely(x) __builtin_expect(!!(x), 0)
 
 template<typename T>
 class BufferBase {
 	private:
-		std::atomic<std::size_t> read_idx;
-		std::atomic<std::size_t> write_idx;
+		std::atomic<std::size_t> m_read_idx;
+
+		char padding1[CacheLineSize];
+
+		std::atomic<std::size_t> m_write_idx;
 
 		BufferBase(BufferBase const& ) = delete;
 		BufferBase& operator = (BufferBase const &) = delete;
 
 	protected:
-		BufferBase(): read_idx(0), write_idx(0) {}
+		BufferBase(): m_read_idx(0), m_write_idx(0) {}
 
 		/**
 		 *  #define likely(x) __builtin_expect(!!(x), 1)
@@ -58,37 +63,37 @@ class BufferBase {
 		 * write_available同理
 		 **/
 		std::size_t read_available(std::size_t max_size) {
-			const std::size_t write = write_idx.load(std::memory_order_acquire);
-			const std::size_t read = read_idx.load(std::memory_order_relaxed);
+			const std::size_t write = m_write_idx.load(std::memory_order_acquire);
+			const std::size_t read = m_read_idx.load(std::memory_order_relaxed);
 			return read_available(write, read, max_size);
 		}
 
 		std::size_t write_available(std::size_t max_size) {
-			const std::size_t read = read_idx.load(std::memory_order_acquire);
-			const std::size_t write = write_idx.load(std::memory_order_relaxed);
+			const std::size_t read = m_read_idx.load(std::memory_order_acquire);
+			const std::size_t write = m_write_idx.load(std::memory_order_relaxed);
 			return write_available(write, read, max_size);
 		}
 
-		bool empty(std::size_t write_idx, std::size_t read_idx) {
-			return write_idx == read_idx;
+		bool empty(std::size_t m_write_idx, std::size_t m_read_idx) {
+			return m_write_idx == m_read_idx;
 		}
 
 		bool push(T const& t, T * buffer, std::size_t max_size) {
-			const std::size_t write = write_idx.load(std::memory_order_relaxed);
-			const std::size_t next = this->next(write, max_size);
-			if (next == read_idx.load(std::memory_order_acquire)) {
+			const std::size_t write = m_write_idx.load(std::memory_order_relaxed);
+			const std::size_t next = this->next_index(write, max_size);
+			if (next == m_read_idx.load(std::memory_order_acquire)) {
 				return false;
 			}
 
 			new (buffer+write) T(t);
-			write_idx.store(next, std::memory_order_release);
+			m_write_idx.store(next, std::memory_order_release);
 
 			return true;
 		}
 
 		std::size_t pop(T* output_buffer, std::size_t output_count, T* buffer, std::size_t max_size) {
-			const std::size_t read = read_idx.load(std::memory_order_relaxed);
-			const std::size_t write = write_idx.load(std::memory_order_acquire);
+			const std::size_t read = m_read_idx.load(std::memory_order_relaxed);
+			const std::size_t write = m_write_idx.load(std::memory_order_acquire);
 			std::size_t avail = read_available(write, read, max_size);	
 
 			if (0 == avail) {
@@ -96,7 +101,7 @@ class BufferBase {
 			}
 
 			output_count = std::min(avail, output_count);
-			std::size_t new_read_index = buffer + read;
+			std::size_t new_read_index = read + output_count;
 			// todo : copy and delete 
 			if (read + output_count > max_size) {
 				const std::size_t seg1 = max_size - read;
@@ -113,7 +118,7 @@ class BufferBase {
 				}
 			}
 
-			read_idx.store(new_read_index, std::memory_order_release);
+			m_read_idx.store(new_read_index, std::memory_order_release);
 
 			return output_count;
 		}
@@ -135,15 +140,37 @@ class BufferBase {
 };
 
 template<typename T, std::size_t MaxSize>
-class RingBuffer {
+class RingBuffer: BufferBase<T> {
 private:
 	 static const std::size_t max_size = MaxSize + 1;
 
-	 typedef typename std::aligned_storage<max_size * sizeof(T), alignof(T)>::type storage_type;
+	 typedef typename std::aligned_storage<max_size * sizeof(T), alignof(T)>::type storage_type[max_size];
 
-	 storage_type storage;
+	 storage_type m_storage;
 public:
-	 T* data() {
-		 return reinterpret_cast<T*>(&storage);
-	 }
+
+    T * data()
+    {
+        return reinterpret_cast<T*>(m_storage);
+    }
+
+    const T * data() const
+    {
+        return reinterpret_cast<const T*>(m_storage);
+    }
+
+    std::size_t max_number_of_elements() const
+    {
+        return max_size;
+    }
+
+	bool push(T const & t)
+    {
+        return BufferBase<T>::push(t, data(), max_size);
+    }
+
+	bool pop(T * ret)
+    {
+        return BufferBase<T>::pop(ret, 1, data(), max_size) > 0;
+    }
 };

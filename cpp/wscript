@@ -24,9 +24,9 @@ def configure(conf):
 
 def build(bld):
     bld.program(
-            #source=bld.path.ant_glob(['src/**/*.cpp']), 
+            source=bld.path.ant_glob(['src/**/*.cpp'], excl=['src/**/thread_pool.cpp', 'src/**/timer_wheel.cpp']), 
             #source=['src/main.cpp', 'src/thread_pool.cpp'], 
-            source=['src/main.cpp'], 
+            #source=['src/main.cpp'], 
             includes = includes_dir,
             cxxflags = cxx_build_flags,
             linkflags = link_flags,
