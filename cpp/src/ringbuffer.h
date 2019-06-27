@@ -1,6 +1,9 @@
+#pragma once
+
 #include<atomic>
 #include<algorithm>
 #include<type_traits>
+#include<iostream>
 
 #include "def.h"
 
@@ -85,6 +88,7 @@ class BufferBase {
 				return false;
 			}
 
+			std::cout << "avail: " << next << " , read: " << m_read_idx.load(std::memory_order_acquire) << std::endl;
 			new (buffer+write) T(t);
 			m_write_idx.store(next, std::memory_order_release);
 
@@ -100,6 +104,7 @@ class BufferBase {
 				return 0;
 			}
 
+			std::cout << "avail: " << avail << " read: " << read << "; write: " <<write<< std::endl;
 			output_count = std::min(avail, output_count);
 			std::size_t new_read_index = read + output_count;
 			// todo : copy and delete 
@@ -169,8 +174,8 @@ public:
         return BufferBase<T>::push(t, data(), max_size);
     }
 
-	bool pop(T * ret)
+	std::size_t pop(T * ret)
     {
-        return BufferBase<T>::pop(ret, 1, data(), max_size) > 0;
+        return BufferBase<T>::pop(ret, 1, data(), max_size);
     }
 };

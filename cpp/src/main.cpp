@@ -2,6 +2,7 @@
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <atomic>
 #include <typeinfo>
 
 #include "ringbuffer.h"
@@ -9,6 +10,8 @@
 #include "spsc.h"
 
 using namespace std;
+
+static atomic_flag of = ATOMIC_FLAG_INIT;
 
 class Temp
 {
@@ -19,13 +22,13 @@ public:
 
 	Temp(int count) {
 		m_count = count;
-		cout << "call construct" << endl;
+		//cout << "call construct" << endl;
 	}
 
 	    //拷贝构造函数
     Temp(const Temp& C) {
         m_count = C.m_count;
-		cout << "call copy construct" << endl;
+		//cout << "call copy construct" << endl;
     }
 
 	int output() {
@@ -78,11 +81,11 @@ public:
 //}
 
 void writer(spsc_queue<Temp>::PostType p) {
-	for (int i = 0; i < 10; ++i) 
+	for (int i = 0; i < 100000000; ++i) 
 	{
-		cout << "post i " << i << endl;
+		//cout << "post i " << i << endl;
 		p->post(Temp(i));
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		//std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }
 
@@ -91,8 +94,16 @@ int main()
 	//	test(10000000, 4);
 	//	test(10000000, 8);
 
+	RingBuffer<Temp, 10> rb;
+	rb.push(Temp(1000));
+
+	Temp ret;
+	rb.pop(&ret);
+	cout << "rb return : " << ret.m_count << endl;
+	rb.pop(&ret);
+
 	try {
-		shared_ptr<spsc_queue<int>> q (new spsc_queue<int>);
+		//shared_ptr<spsc_queue<int>> q (new spsc_queue<int>);
 		//q->enqueue(1);
 		//q->enqueue(2);
 		//int v;
@@ -113,37 +124,39 @@ int main()
 
 		cout << "tpyes p: " << typeid(p).name() << "  r: " << typeid(r).name() << endl;
 
-		cout << "use count : " << q.use_count() << endl;
+		//cout << "use count : " << q.use_count() << endl;
 		std::thread write (writer, std::move(p));
 
 		std::thread read ([](spsc_queue<Temp>::RecvType rt) {
 			Temp output;
 			while (true) {
 				if (rt->recv(output)) {
-					cout << " recved : " << output.output() << endl;
-				}
-				if (output.output() > 4) {
-					break;
+					if (!of.test_and_set()) {
+						cout << "recved:  " << output.output() << endl;
+						std::this_thread::sleep_for(std::chrono::milliseconds(1));
+					}
+				} else {
+					if (!of.test_and_set()) {
+						cout << "waiting for recving:  " << endl;
+						std::this_thread::sleep_for(std::chrono::milliseconds(1));
+					}
 				}
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
 		}, std::move(r));
 
-		write.join();
-		read.join();
+		write.detach();
+		read.detach();
     } catch(const std::bad_weak_ptr& e) {
         std::cout << e.what() << '\n';
     }
 
+	string a;
+	while (cin >> a) {
+		of.clear();
+	}
+
 	Temp *t = new Temp(1);
 	Temp *pt = new (t) Temp(3);
 	cout << " : " << pt->m_count << endl;
-
-	RingBuffer<Temp, 10> rb;
-	rb.push(Temp(1000));
-
-	Temp ret;
-	rb.pop(&ret);
-	cout << "rb return : " << ret.m_count << endl;
 }

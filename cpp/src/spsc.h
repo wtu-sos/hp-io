@@ -6,6 +6,8 @@
 
 #include "def.h"
 
+static const unsigned int MAX_SPSC_CACHE_BOUND = 40960;
+
 template<typename T> 
 T load_consume(T const* addr) 
 { 
@@ -53,10 +55,10 @@ public:
         } while(n);
     }
 
-    void enqueue(T v) {
+    bool enqueue(T v) {
         //std::cout << "trace : enqueue" << std::endl;
         if (is_drop.load()) {
-            return;
+            return false;
         }
 
         node* n = alloc_node();
@@ -64,13 +66,28 @@ public:
         n->value_ = v;
         store_release(&head_->next_, n);
         head_ = n;
+
+        return true;
     }
 
     bool dequeue(T& v) {
         //std::cout << "trace : dequeue" << std::endl;
-        if (load_consume(&tail_->next_)) {
-            v = std::move(tail_->next_->value_);
-            store_release(&tail_, tail_->next_);
+        node* n = load_consume(&tail_->next_);
+        if (n != nullptr) {
+            v = std::move(n->value_);
+
+            unsigned int cache_nodes = this->cache_size.load(std::memory_order_relaxed);
+            if (cache_nodes < MAX_SPSC_CACHE_BOUND && !(n->cache)) {
+                this->cache_size.fetch_add(1, std::memory_order_release);
+                n->cache = true;
+            }
+
+            if (n->cache) {
+                store_release(&tail_, n);
+            } else {
+                delete n;
+            }
+
             return true;
         } else {
             return false;
@@ -99,6 +116,7 @@ private:
     {
         node* next_;
         T value_;
+        bool cache;
     };
 
     node*  tail_;  // tail of the queue    
@@ -108,6 +126,8 @@ private:
 
     // producer part
     node* head_; // hard of the queue
+
+    std::atomic<unsigned int> cache_size;
     node* first_; // last unused node (tail of node cache)
     node* tail_copy_; // helper (pointer somewhere between first_ 
     //and tail_)
