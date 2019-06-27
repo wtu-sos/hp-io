@@ -2,7 +2,7 @@
 
 #include <atomic>
 #include <memory>
-#include <iostream>
+//#include <iostream>
 
 #include "def.h"
 
@@ -63,7 +63,7 @@ public:
 
         node* n = alloc_node();
         n->next_ = nullptr;
-        n->value_ = v;
+        n->value_ = std::move(v);
         store_release(&head_->next_, n);
         head_ = n;
 
